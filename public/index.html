@@ -75,10 +75,10 @@
 <body>
     <div id="chatbox"></div>
     <form id="form">
-        <label id="imageLabel" for="imageUpload">Görsel Yükle</label>
         <input id="input" autocomplete="off" placeholder="Mesajınızı yazın..." />
         <button type="submit">Gönder</button>
     </form>
+    <label id="imageLabel" for="imageUpload">Görsel Yükle</label>
     <input type="file" id="imageUpload" accept="image/*">
 
     <script>
@@ -94,7 +94,7 @@
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
                 if (input.value) {
-                    socket.emit('chat message', { type: 'text', text: input.value, username: myUsername });
+                    socket.emit('chat message', { msg: input.value, username: myUsername });
                     addMessage(`${myUsername}: ${input.value}`, 'own');
                     input.value = '';
                 }
@@ -104,7 +104,7 @@
                 var file = event.target.files[0];
                 var reader = new FileReader();
                 reader.onload = function(e) {
-                    socket.emit('chat message', { type: 'image', image: e.target.result, username: myUsername });
+                    socket.emit('chat message', { msg: e.target.result, username: myUsername });
                     addImageMessage(e.target.result, 'own');
                 };
                 reader.readAsDataURL(file);
@@ -112,10 +112,10 @@
 
             socket.on('chat message', function(data) {
                 if (data.username !== myUsername) {
-                    if (data.type === 'text') {
-                        addMessage(`${data.username}: ${data.text}`, 'other');
-                    } else if (data.type === 'image') {
-                        addImageMessage(data.image, 'other', data.username);
+                    if (data.msg.startsWith('data:image')) {
+                        addImageMessage(data.msg, 'other', data.username);
+                    } else {
+                        addMessage(`${data.username}: ${data.msg}`, 'other');
                     }
                 }
             });
@@ -133,7 +133,11 @@
                 item.classList.add('message', 'image-message', type);
                 var img = document.createElement('img');
                 img.src = imgData;
-                if (username) item.textContent = `${username}: `;
+                if (username) {
+                    var text = document.createElement('div');
+                    text.textContent = `${username}: `;
+                    item.appendChild(text);
+                }
                 item.appendChild(img);
                 chatbox.prepend(item);
                 chatbox.scrollTop = chatbox.scrollHeight;
