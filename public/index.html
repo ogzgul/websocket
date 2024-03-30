@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Uygulaması</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding-top: 20px;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+        #chatbox {
+            border: 2px solid #0084ff;
+            width: 60%;
+            height: 400px;
+            display: flex;
+            flex-direction: column-reverse;
+            overflow-y: auto;
+            padding: 10px;
+            background-color: white;
+        }
+        #form {
+            display: flex;
+            margin-top: 20px;
+            width: 60%;
+        }
+        #input {
+            flex-grow: 1;
+            padding: 10px;
+            border-radius: 10px;
+            margin-right: 10px;
+            border: 1px solid #ddd;
+        }
+        #form button, #imageLabel {
+            background-color: #0084ff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        #form button:hover, #imageLabel:hover {
+            background-color: #0056b3;
+        }
+        #imageUpload {
+            display: none;
+        }
+        .message {
+            margin: 5px;
+            padding: 10px;
+            border-radius: 10px;
+            max-width: 60%;
+            word-wrap: break-word;
+            align-self: flex-start;
+            background-color: #ebebeb;
+        }
+        .own {
+            align-self: flex-end;
+            background-color: #dcf8c6;
+        }
+        .image-message img {
+            max-width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 0 8px #b0b0b0;
+        }
+    </style>
+</head>
+<body>
+    <div id="chatbox"></div>
+    <form id="form">
+        <label id="imageLabel" for="imageUpload">Görsel Yükle</label>
+        <input id="input" autocomplete="off" placeholder="Mesajınızı yazın..." />
+        <button type="submit">Gönder</button>
+    </form>
+    <input type="file" id="imageUpload" accept="image/*">
+
+    <script>
+        var socket = io();
+        var myUsername = prompt("Lütfen chat için bir isim giriniz:", "Misafir");
+
+        document.addEventListener('DOMContentLoaded', () => {
+            var form = document.getElementById('form');
+            var input = document.getElementById('input');
+            var chatbox = document.getElementById('chatbox');
+            var imageUpload = document.getElementById('imageUpload');
+
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                if (input.value) {
+                    socket.emit('chat message', { type: 'text', text: input.value, username: myUsername });
+                    addMessage(`${myUsername}: ${input.value}`, 'own');
+                    input.value = '';
+                }
+            });
+
+            imageUpload.addEventListener('change', function(event) {
+                var file = event.target.files[0];
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    socket.emit('chat message', { type: 'image', image: e.target.result, username: myUsername });
+                    addImageMessage(e.target.result, 'own');
+                };
+                reader.readAsDataURL(file);
+            });
+
+            socket.on('chat message', function(data) {
+                if (data.username !== myUsername) {
+                    if (data.type === 'text') {
+                        addMessage(`${data.username}: ${data.text}`, 'other');
+                    } else if (data.type === 'image') {
+                        addImageMessage(data.image, 'other', data.username);
+                    }
+                }
+            });
+
+            function addMessage(msg, type) {
+                var item = document.createElement('div');
+                item.classList.add('message', type);
+                item.textContent = msg;
+                chatbox.prepend(item);
+                chatbox.scrollTop = chatbox.scrollHeight;
+            }
+
+            function addImageMessage(imgData, type, username = '') {
+                var item = document.createElement('div');
+                item.classList.add('message', 'image-message', type);
+                var img = document.createElement('img');
+                img.src = imgData;
+                if (username) item.textContent = `${username}: `;
+                item.appendChild(img);
+                chatbox.prepend(item);
+                chatbox.scrollTop = chatbox.scrollHeight;
+            }
+        });
+    </script>
+</body>
+</html>
